@@ -1,0 +1,75 @@
+.app {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 20px;
+}
+
+.control-buttons {
+  margin-bottom: 10px;
+}
+
+.workspace {
+  position: relative; 
+  width: 297; /* Adjust width as needed */
+  height: 420; /* Adjust height as needed */
+  border: 1px solid #ccc;
+  overflow: hidden;
+  background-image: url("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRVf-Sm-F1X6m501mwE5VowNHE3wJJZEFLH2w&s");
+}
+
+.component {
+  cursor: pointer;
+  /* border-radius: 4px; */
+  padding: 2px;
+  box-shadow: 0 0 0 1px rgb(255, 0, 0);
+  overflow: hidden;
+  
+}
+
+.component.text {
+  /* background-color: #f0f0f0; */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.component.image {
+  background-color: transparent ;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.component.selected {
+  border: 1px solid red;
+}
+
+.component img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.component input[type='file'] {
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.workspace input[type='text'] {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  padding: 8px;
+  font-size: 14px;
+}
+
+.workspace .moveable-control {
+  box-sizing: border-box;
+  z-index: 1000;
+}

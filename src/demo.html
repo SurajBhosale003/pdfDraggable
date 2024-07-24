@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CTC Payslip</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            grid-template-rows: auto;
+            gap: 1px;
+            border: 2px solid black;
+        }
+        .logo {
+            grid-column: span 3;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #f3b091;
+        }
+        .doc-details {
+            grid-column: span 2;
+            text-align: right;
+            padding: 10px;
+            background-color: #d4e1f5;
+        }
+        .doc-details2 {
+            display: grid;
+            grid-template-rows: 1fr;
+            grid-column: span 2;
+            padding: 10px;
+        }
+        .header {
+            grid-column: span 5;
+            text-align: center;
+            padding: 10px;
+            font-size: 24px;
+            font-weight: bold;
+            background-color: #ffd700;
+        }
+        .employee-name {
+            grid-column: span 3;
+            text-align: center;
+            padding: 10px;
+            background-color: #ffd700;
+        }
+        .monthly-cash {
+            grid-column: span 2;
+            text-align: center;
+            padding: 10px;
+            background-color: #d4e1f5;
+        }
+        .particulars-header, .monthly-salary-header, .yearly-salary-header {
+            font-weight: bold;
+            text-align: center;
+            background-color: #f3b091;
+        }
+        .particulars-header {
+            grid-column: span 2;
+        }
+        .monthly-salary-header {
+            grid-column: span 1;
+        }
+        .yearly-salary-header {
+            grid-column: span 1;
+        }
+        .row {
+            display: contents;
+        }
+        .cell {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: center;
+        }
+        .gross-salary {
+            background-color: #f3b091;
+            font-weight: bold;
+        }
+        .highlight {
+            background-color: #ffd700;
+            font-weight: bold;
+        }
+        .footer {
+            grid-column: span 5;
+            text-align: right;
+            padding: 10px;
+            background-color: #d4e1f5;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo cell"> <h1>CTC</h1></div>
+        <div class="doc-details2 cell">
+            <div class="cell">Doc.No.: MT/HR/F-09</div>
+            <div class="cell">Org.date: 01-10-2019</div>
+            <div class="cell">Rev.No.: 00</div>
+        </div>
+        <div class="employee-name cell">Deepika Gandhi</div>
+        <div class="monthly-cash cell">Monthly Cash in hand</div>
+
+        <div class="particulars-header cell">Particulars</div>
+        <div class="monthly-salary-header cell">Monthly Salary</div>
+        <div class="yearly-salary-header cell">Yearly Salary</div>
+
+        <div class="row">
+            <div class="cell">Basic Salary</div>
+            <div class="cell">34280</div>
+            <div class="cell">411360</div>
+        </div>
+        <div class="row">
+            <div class="cell">HRA</div>
+            <div class="cell">51420</div>
+            <div class="cell">617040</div>
+        </div>
+        <div class="row">
+            <div class="cell">Conveyance</div>
+            <div class="cell">0</div>
+            <div class="cell">0</div>
+        </div>
+        <div class="row">
+            <div class="cell gross-salary">Monthly Gross Salary</div>
+            <div class="cell gross-salary">85700</div>
+            <div class="cell gross-salary">1028400</div>
+        </div>
+        <div class="row">
+            <div class="cell">PF Employer</div>
+            <div class="cell">1800</div>
+            <div class="cell">21600</div>
+        </div>
+        <div class="row">
+            <div class="cell">ESIC Emp Share</div>
+            <div class="cell">0</div>
+            <div class="cell">0</div>
+        </div>
+        <div class="row">
+            <div class="cell">Bonus</div>
+            <div class="cell" colspan="2">As per Bonus Act & Company Policy</div>
+        </div>
+        <div class="row">
+            <div class="cell">Gratuity</div>
+            <div class="cell" colspan="2">As per Gratuity Act & Company Policy</div>
+        </div>
+        <div class="row">
+            <div class="cell">Sub Total</div>
+            <div class="cell">1800</div>
+            <div class="cell">21600</div>
+        </div>
+        <div class="row">
+            <div class="cell">CTC</div>
+            <div class="cell">87500</div>
+            <div class="cell">1050000</div>
+        </div>
+
+        <div class="highlight cell">Gross Pay</div>
+        <div class="highlight cell" colspan="2">85700</div>
+        <div class="highlight cell">Take Home Salary</div>
+        <div class="highlight cell" colspan="2">83900</div>
+
+        <div class="row">
+            <div class="cell">PF Employee</div>
+            <div class="cell" colspan="2">1800</div>
+        </div>
+        <div class="row">
+            <div class="cell">ESI Employee</div>
+            <div class="cell" colspan="2">0</div>
+        </div>
+        <div class="row">
+            <div class="cell">TDS Deduction</div>
+            <div class="cell" colspan="2">0</div>
+        </div>
+        <div class="footer cell">
+            Total
+        </div>
+    </div>
+</body>
+</html>
