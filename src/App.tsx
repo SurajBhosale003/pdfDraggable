@@ -176,12 +176,20 @@ const App: React.FC = () => {
     const page = pdfDoc.getPages()[0];
   
     for (const component of components) {
+      const { left, top } = component.position;
+      
+
+      // console.log("Y pos: " ,yPosition , " /---", top , " /---", page.getHeight() );
       if (component.type === 'text') {
+        const fontSize = component.fontSize ?? 12;
+        const yPosition = page.getHeight() - top - fontSize - 3;
         page.drawText(component.content || '', {
-          x: component.position.left,
-          y: page.getHeight() - component.position.top - component.size.height,
+          x: left + 3,
+          y: yPosition,
           size: component.fontSize,
           color: rgb(0, 0, 0),
+          lineHeight: fontSize * 1.2, 
+          maxWidth: component.size.width, 
         });
       } else if (component.type === 'image' && component.content) {
         const imageData = component.content.split(',')[1];
@@ -203,7 +211,7 @@ const App: React.FC = () => {
         }
   
         page.drawImage(embeddedImage, {
-          x: component.position.left,
+          x: left,
           y: page.getHeight() - component.position.top - component.size.height,
           width: component.size.width,
           height: component.size.height,
@@ -214,15 +222,16 @@ const App: React.FC = () => {
     const pdfBytes = await pdfDoc.save();
     const blob = new Blob([pdfBytes], { type: 'application/pdf' });
     const url = URL.createObjectURL(blob);
-    const varName = "eSign";// Can Add The name or title of pdf while saving.
+    const varName = "eSign"; // Can add the name or title of the PDF while saving.
     const link = document.createElement('a');
     link.href = url;
-    link.download = `${varName}.pdf`; 
+    link.download = `${varName}.pdf`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   };
+  
   
   
   
@@ -350,7 +359,7 @@ const App: React.FC = () => {
   target={target}
   resizable
   draggable
-  scalable
+  // scalable
   bounds={{
     left: 0,
     top: 0,
