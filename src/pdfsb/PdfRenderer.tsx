@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, {useRef, useEffect } from 'react';
 import * as pdfjsLib from 'pdfjs-dist/build/pdf';
 import 'pdfjs-dist/build/pdf.worker.js';
 import { PdfRendererProps } from '../helper/Interface'

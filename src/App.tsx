@@ -3,7 +3,7 @@ import Moveable from 'react-moveable';
 import PdfRenderer from './pdfsb/PdfRenderer';
 import { PDFDocument, rgb } from 'pdf-lib';
 import { datapdf } from './helper/DataPDF'
-import { initialComponents } from './helper/TemplateMaping';
+import { initialComponents , DexcissTemplete , HelloDexciss } from './helper/TemplateMaping';
 import { ComponentData } from './helper/Interface'
 
 
@@ -149,6 +149,14 @@ const App: React.FC = () => {
     setComponents(initialComponents);
   };
 
+  const loadDexcissComponents = () => {
+    setComponents(DexcissTemplete);
+  };
+  const loadHelloDexcissComponents = () => {
+    setComponents(HelloDexciss);
+  };
+  
+
   useEffect(() => {
     if (selectedId !== null) {
       const selectedElement = document.querySelector(`[data-id="${selectedId}"]`);
@@ -226,6 +234,8 @@ const App: React.FC = () => {
         <button onClick={() => addComponent('text')}>Add Text</button>
         <button onClick={() => addComponent('image')}>Add Image</button>
         <button onClick={loadComponents}>Load Components from JSON</button>
+        <button onClick={loadDexcissComponents}>Load Dexciss Component from JSON</button>
+        <button onClick={loadHelloDexcissComponents}>Load Hello Component from JSON</button>
         {selectedId && (
           <>
             <button onClick={() => changeTextSize(true)}>Increase Text Size</button>
