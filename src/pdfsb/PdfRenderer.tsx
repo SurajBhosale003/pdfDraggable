@@ -1,9 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import * as pdfjsLib from 'pdfjs-dist/build/pdf';
 import 'pdfjs-dist/build/pdf.worker.js';
-interface PdfRendererProps {
-    pdfData: string;
-  }
+import { PdfRendererProps } from '../helper/Interface'
   
   const PdfRenderer: React.FC<PdfRendererProps> = ({ pdfData }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
