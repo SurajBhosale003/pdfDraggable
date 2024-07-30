@@ -19,18 +19,13 @@ const App: React.FC = () => {
   const workspaceRef = useRef<HTMLDivElement | null>(null);
   const textInputRef = useRef<HTMLInputElement | null>(null);
 
-
-
   const Editable = {
     name: "editable",
-    props: [],
+    props: [selectedId],
     events: [],
     render(moveable: MoveableManagerInterface<any, any>, React: Renderer) {
         const rect = moveable.getRect();
         const { pos2 } = moveable.state;
-
-        // Add key (required)
-        // Add class prefix moveable-(required)
         const EditableViewer = moveable.useCSS("div", `
         {
             position: absolute;
@@ -43,7 +38,7 @@ const App: React.FC = () => {
             width: 24px;
             height: 24px;
             margin-bottom: 4px;
-            background: #4af;
+            background: #283C42;
             border-radius: 4px;
             appearance: none;
             border: 0;
@@ -54,8 +49,15 @@ const App: React.FC = () => {
         return <EditableViewer key={"editable-viewer"} className={"moveable-editable"} style={{
             transform: `translate(${pos2[0]}px, ${pos2[1]}px) rotate(${rect.rotation}deg) translate(10px)`,
         }}>
-            <button className="custom-button">X</button>
-            <button className="custom-button">C</button>
+            <button className="custom-button" onClick={deleteComponent} >X</button>
+            <button className="custom-button" onClick={() => {
+                  if (selectedId !== null) {
+                      handleRemoveImage(selectedId);
+                  }else
+                  {
+                    setTextFieldValue("")
+                  }
+              }}>C</button>
         </EditableViewer>;
     },
 } as const;
@@ -101,6 +103,7 @@ const App: React.FC = () => {
     const newComponent: ComponentData = {
       id: Date.now(),
       type,
+      pageNo:1,
       name: `${type}-${Date.now()}`,
       position: { top: 50, left: 50 },
       size: { width: 100, height: 100 },
@@ -147,6 +150,7 @@ const App: React.FC = () => {
   const handleDeselect = (e: React.MouseEvent) => {
     if (!(e.target as HTMLElement).closest('.component')) {
       setSelectedId(null);
+      setTarget(null);
     }
   };
 
@@ -171,14 +175,16 @@ const App: React.FC = () => {
         prevComponents.filter((component) => component.id !== selectedId)
       );
       setSelectedId(null);
+      setTarget(null);
     }
   };
 
   const logComponentData = () => {
-    const data = components.map(({ id, type, content, value, position, size, name, fontSize, assign }) => ({
+    const data = components.map(({ id, type, content,pageNo, value, position, size, name, fontSize, assign }) => ({
       id,
       type,
       content,
+      pageNo,
       value,
       position,
       size,
@@ -221,9 +227,7 @@ const App: React.FC = () => {
   
     for (const component of components) {
       const { left, top } = component.position;
-      
-
-      // console.log("Y pos: " ,yPosition , " /---", top , " /---", page.getHeight() );
+  
       if (component.type === 'text') {
         const fontSize = component.fontSize ?? 12;
         const yPosition = page.getHeight() - top - fontSize - 3;
@@ -232,8 +236,8 @@ const App: React.FC = () => {
           y: yPosition,
           size: component.fontSize,
           color: rgb(0, 0, 0),
-          lineHeight: fontSize * 1.2, 
-          maxWidth: component.size.width, 
+          lineHeight: fontSize * 1.2,
+          maxWidth: component.size.width,
         });
       } else if (component.type === 'image' && component.content) {
         const imageData = component.content.split(',')[1];
@@ -254,33 +258,35 @@ const App: React.FC = () => {
           continue;
         }
   
-       // Calculate aspect ratio
-       const { width: imageWidth, height: imageHeight } = embeddedImage;
-       const componentWidth = component.size.width;
-       const componentHeight = component.size.height;
-
-       let drawWidth = componentWidth;
-       let drawHeight = (imageHeight / imageWidth) * componentWidth;
-
-       // If the calculated height is greater than the component height, scale down
-       if (drawHeight > componentHeight) {
-           drawHeight = componentHeight;
-           drawWidth = (imageWidth / imageHeight) * componentHeight;
-       }
-
-       page.drawImage(embeddedImage, {
-           x: left,
-           y: page.getHeight() - component.position.top - drawHeight,
-           width: drawWidth,
-           height: drawHeight,
-       });
+        const { width: imageWidth, height: imageHeight } = embeddedImage;
+        const containerWidth = component.size.width;
+        const containerHeight = component.size.height;
+  
+        // Calculate scale ratio
+        const widthRatio = containerWidth / imageWidth;
+        const heightRatio = containerHeight / imageHeight;
+        const scaleRatio = Math.min(widthRatio, heightRatio);
+  
+        const drawWidth = imageWidth * scaleRatio;
+        const drawHeight = imageHeight * scaleRatio;
+  
+        // Ensure the image fits within the container dimensions
+        const x = left;
+        const y = page.getHeight() - top - drawHeight;
+  
+        page.drawImage(embeddedImage, {
+          x: x,
+          y: y,
+          width: drawWidth,
+          height: drawHeight,
+        });
       }
     }
   
     const pdfBytes = await pdfDoc.save();
     const blob = new Blob([pdfBytes], { type: 'application/pdf' });
     const url = URL.createObjectURL(blob);
-    const varName = "eSign"; // Can add the name or title of the PDF while saving.-------------------------
+    const varName = "eSign"; // Can add the name or title of the PDF while saving.
     const link = document.createElement('a');
     link.href = url;
     link.download = `${varName}.pdf`;
@@ -289,6 +295,7 @@ const App: React.FC = () => {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   };
+  
   const handleRemoveImage = (componentId: number) => {
     setComponents((prevComponents) =>
       prevComponents.map((c) =>
@@ -374,7 +381,7 @@ const App: React.FC = () => {
       <div
         key={component.id}
         data-id={component.id}
-        className={`component ${component.type}`}
+        className={`component ${component.type} ${selectedId === component.id ? 'selected' : ''}`}
         style={{
           position: 'absolute',
           top: component.position.top,
@@ -409,7 +416,7 @@ const App: React.FC = () => {
             {component.content && (
               <div>
                 <img src={component.content} alt="Uploaded" style={{ width: '100%', height: '100%' }} />
-                <button onClick={() => handleRemoveImage(component.id)}>Remove Image</button>
+                {/* <button onClick={() => handleRemoveImage(component.id)}>Remove Image</button> */}
               </div>
             )}
           </div>

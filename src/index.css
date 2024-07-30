@@ -21,7 +21,7 @@
   cursor: pointer;
   /* border-radius: 4px; */
   padding: 2px;
-  box-shadow: 0 0 0 1px rgb(255, 0, 0);
+  box-shadow: 0 0 0 1px #283C42;
   overflow: hidden;
   
 }
@@ -41,7 +41,7 @@
 }
 
 .component.selected {
-  box-shadow: 0 0 0 2px rgb(30, 255, 0);
+  box-shadow: 0 0 0 2px #4af;
 }
 
 .component img {
