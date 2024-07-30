@@ -11,11 +11,10 @@
 
 .workspace {
   position: relative; 
-  width: 297; /* Adjust width as needed */
-  height: 420; /* Adjust height as needed */
+  width: 297;
+  height: 420;
   border: 1px solid #ccc;
   overflow: hidden;
-  background-image: url("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRVf-Sm-F1X6m501mwE5VowNHE3wJJZEFLH2w&s");
 }
 
 .component {
@@ -42,7 +41,7 @@
 }
 
 .component.selected {
-  border: 1px solid red;
+  box-shadow: 0 0 0 2px rgb(30, 255, 0);
 }
 
 .component img {

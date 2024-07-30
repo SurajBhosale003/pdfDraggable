@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Moveable from 'react-moveable';
+import { MoveableManagerInterface, Renderer } from "react-moveable";
 import PdfRenderer from './pdfsb/PdfRenderer';
 import { PDFDocument, rgb } from 'pdf-lib';
 import { datapdf } from './helper/DataPDF'
@@ -17,6 +18,49 @@ const App: React.FC = () => {
   const moveableRef = useRef<Moveable | null>(null);
   const workspaceRef = useRef<HTMLDivElement | null>(null);
   const textInputRef = useRef<HTMLInputElement | null>(null);
+
+
+
+  const Editable = {
+    name: "editable",
+    props: [],
+    events: [],
+    render(moveable: MoveableManagerInterface<any, any>, React: Renderer) {
+        const rect = moveable.getRect();
+        const { pos2 } = moveable.state;
+
+        // Add key (required)
+        // Add class prefix moveable-(required)
+        const EditableViewer = moveable.useCSS("div", `
+        {
+            position: absolute;
+            left: 0px;
+            top: 0px;
+            will-change: transform;
+            transform-origin: 0px 0px;
+        }
+        .custom-button {
+            width: 24px;
+            height: 24px;
+            margin-bottom: 4px;
+            background: #4af;
+            border-radius: 4px;
+            appearance: none;
+            border: 0;
+            color: white;
+            font-weight: bold;
+        }
+            `);
+        return <EditableViewer key={"editable-viewer"} className={"moveable-editable"} style={{
+            transform: `translate(${pos2[0]}px, ${pos2[1]}px) rotate(${rect.rotation}deg) translate(10px)`,
+        }}>
+            <button className="custom-button">X</button>
+            <button className="custom-button">C</button>
+        </EditableViewer>;
+    },
+} as const;
+
+
 
   const handleUserInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setUserInput(e.target.value);
@@ -78,7 +122,7 @@ const App: React.FC = () => {
     );
   };
 
-  const updateComponentSize = (id: number, width: number, height: number) => {
+  const updateComponentSize = (id: number | null, width: number , height: number) => {
     setComponents((prevComponents) =>
       prevComponents.map((component) =>
         component.id === id
@@ -210,19 +254,33 @@ const App: React.FC = () => {
           continue;
         }
   
-        page.drawImage(embeddedImage, {
-          x: left,
-          y: page.getHeight() - component.position.top - component.size.height,
-          width: component.size.width,
-          height: component.size.height,
-        });
+       // Calculate aspect ratio
+       const { width: imageWidth, height: imageHeight } = embeddedImage;
+       const componentWidth = component.size.width;
+       const componentHeight = component.size.height;
+
+       let drawWidth = componentWidth;
+       let drawHeight = (imageHeight / imageWidth) * componentWidth;
+
+       // If the calculated height is greater than the component height, scale down
+       if (drawHeight > componentHeight) {
+           drawHeight = componentHeight;
+           drawWidth = (imageWidth / imageHeight) * componentHeight;
+       }
+
+       page.drawImage(embeddedImage, {
+           x: left,
+           y: page.getHeight() - component.position.top - drawHeight,
+           width: drawWidth,
+           height: drawHeight,
+       });
       }
     }
   
     const pdfBytes = await pdfDoc.save();
     const blob = new Blob([pdfBytes], { type: 'application/pdf' });
     const url = URL.createObjectURL(blob);
-    const varName = "eSign"; // Can add the name or title of the PDF while saving.
+    const varName = "eSign"; // Can add the name or title of the PDF while saving.-------------------------
     const link = document.createElement('a');
     link.href = url;
     link.download = `${varName}.pdf`;
@@ -231,179 +289,187 @@ const App: React.FC = () => {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   };
-  
-  
-  
-  
-  
-  
+  const handleRemoveImage = (componentId: number) => {
+    setComponents((prevComponents) =>
+      prevComponents.map((c) =>
+        c.id === componentId
+          ? { ...c, content: undefined, value: undefined }
+          : c
+      )
+    );
+  };
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, componentId: number) => {
+    if (e.target.files) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        setComponents((prevComponents) =>
+          prevComponents.map((c) =>
+            c.id === componentId
+              ? {
+                  ...c,
+                  content: base64String,
+                  value: base64String,
+                }
+              : c
+          )
+        );
+      };
+      reader.readAsDataURL(file);
+    }
+  };
   return (
     <div className="app">
-      <div className="control-buttons">
-        <button onClick={() => addComponent('text')}>Add Text</button>
-        <button onClick={() => addComponent('image')}>Add Image</button>
-        <button onClick={loadComponents}>Load Components from JSON</button>
-        <button onClick={loadDexcissComponents}>Load Dexciss Component from JSON</button>
-        <button onClick={loadHelloDexcissComponents}>Load Hello Component from JSON</button>
-        {selectedId && (
-          <>
-            <button onClick={() => changeTextSize(true)}>Increase Text Size</button>
-            <button onClick={() => changeTextSize(false)}>Decrease Text Size</button>
-            <button onClick={deleteComponent}>Delete Component</button>
-          </>
-        )}
-        <button onClick={logComponentData}>Log Component Data</button>
-        <button onClick={mergeAndPrintPDF}>Merge and Print PDF</button>
-      </div>
-      {selectedId && (
-        <input
-          ref={textInputRef}
-          type="text"
-          value={textFieldValue}
-          onChange={handleTextChange}
-          placeholder="Edit text here"
-        />
-      )}
-      {selectedId && (
-        <div>
-          <input
-            type="text"
-            value={userInput}
-            onChange={handleUserInputChange}
-            placeholder="Add user"
-          />
-          <button onClick={addUserToComponent}>Add User</button>
-          <ul>
-            {components
-              .find((component) => component.id === selectedId)
-              ?.assign?.map((user, index) => (
-                <li key={index}>
-                  {user} <button onClick={() => removeUserFromComponent(user)}>Remove</button>
-                </li>
-              ))}
-          </ul>
-        </div>
-      )}
-      <div className="workspace" ref={workspaceRef} onClick={handleDeselect}>
+  <div className="control-buttons">
+    <button onClick={() => addComponent('text')}>Add Text</button>
+    <button onClick={() => addComponent('image')}>Add Image</button>
+    <button onClick={loadComponents}>Load Components from JSON</button>
+    <button onClick={loadDexcissComponents}>Load Dexciss Component from JSON</button>
+    <button onClick={loadHelloDexcissComponents}>Load Hello Component from JSON</button>
+    {selectedId && (
+      <>
+        <button onClick={() => changeTextSize(true)}>Increase Text Size</button>
+        <button onClick={() => changeTextSize(false)}>Decrease Text Size</button>
+        <button onClick={deleteComponent}>Delete Component</button>
+      </>
+    )}
+    <button onClick={logComponentData}>Log Component Data</button>
+    <button onClick={mergeAndPrintPDF}>Merge and Print PDF</button>
+  </div>
+  {selectedId && (
+    <input
+      ref={textInputRef}
+      type="text"
+      value={textFieldValue}
+      onChange={handleTextChange}
+      placeholder="Edit text here"
+    />
+  )}
+  {selectedId && (
+    <div>
+      <input
+        type="text"
+        value={userInput}
+        onChange={handleUserInputChange}
+        placeholder="Add user"
+      />
+      <button onClick={addUserToComponent}>Add User</button>
+      <ul>
+        {components
+          .find((component) => component.id === selectedId)
+          ?.assign?.map((user, index) => (
+            <li key={index}>
+              {user} <button onClick={() => removeUserFromComponent(user)}>Remove</button>
+            </li>
+          ))}
+      </ul>
+    </div>
+  )}
+  <div className="workspace" ref={workspaceRef} onClick={handleDeselect}>
 
-        <PdfRenderer pdfData={datapdf[0].data}/>
+    <PdfRenderer pdfData={datapdf[0].data}/>
 
-        {components.map((component) => (
+    {components.map((component) => (
+      <div
+        key={component.id}
+        data-id={component.id}
+        className={`component ${component.type}`}
+        style={{
+          position: 'absolute',
+          top: component.position.top,
+          left: component.position.left,
+          width: component.size.width,
+          height: component.size.height,
+          border: selectedId === component.id ? '1px solid red' : 'none',
+          fontSize: `${component.fontSize}px`,
+          userSelect: 'none',
+          overflow: 'hidden',
+        }}
+        onClick={(e) => {
+          e.stopPropagation();
+          setSelectedId(component.id);
+        }}
+      >
+        {component.type === 'text' ? (
           <div
-            key={component.id}
-            data-id={component.id}
-            className={`component ${component.type}`}
-            style={{
-              position: 'absolute',
-              top: component.position.top,
-              left: component.position.left ,
-
-              // top: component.position.top > 0 ? component.position.top : 0,
-              // left: component.position.left > 0 ? component.position.top : 0,
-              width: component.size.width,
-              height: component.size.height,
-              border: selectedId === component.id ? '1px solid red' : 'none',
-              fontSize: `${component.fontSize}px`,
-              userSelect: 'none',
-              overflow: 'hidden',
-            }}
-            onClick={(e) => {
-              e.stopPropagation();
-              setSelectedId(component.id);
-            }}
+            style={{ width: '100%', height: '100%', overflow: 'hidden', fontSize: 'inherit', outline: 'none' }}
           >
-            {component.type === 'text' ? (
-              <div
-                style={{ width: '100%', height: '100%', overflow: 'hidden', fontSize: 'inherit', outline: 'none' }}
-              >
-                {component.content || 'Editable Text'}
-              </div>
-            ) : (
+            {component.content || 'Editable Text'}
+          </div>
+        ) : (
+          <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+            {!component.content && (
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => handleImageUpload(e, component.id)}
+              />
+            )}
+            {component.content && (
               <div>
-                {!component.content && (
-                 <input
-                 type="file"
-                 accept="image/*"
-                 onChange={(e) => {
-                   if (e.target.files) {
-                     const file = e.target.files[0];
-                     const reader = new FileReader();
-                     reader.onloadend = () => {
-                       const base64String = reader.result as string;
-                       setComponents((prevComponents) =>
-                         prevComponents.map((c) =>
-                           c.id === component.id
-                             ? {
-                                 ...c,
-                                 content: base64String,
-                                 value: base64String,
-                               }
-                             : c
-                         )
-                       );
-                     };
-                     reader.readAsDataURL(file);
-                   }
-                 }}
-               />               
-                )}
-                {component.content && (
-                  <img src={component.content} alt="Uploaded" style={{ width: '100%', height: '100%' }} />
-                )}
+                <img src={component.content} alt="Uploaded" style={{ width: '100%', height: '100%' }} />
+                <button onClick={() => handleRemoveImage(component.id)}>Remove Image</button>
               </div>
             )}
           </div>
-        ))}
-        <Moveable
-  ref={moveableRef}
-  target={target}
-  resizable
-  draggable
-  // scalable
-  bounds={{
-    left: 0,
-    top: 0,
-    right: workspaceRef.current?.offsetWidth || 0,
-    bottom: workspaceRef.current?.offsetHeight || 0,
-  }}
-  onDrag={(e) => {
-    const workspaceWidth = workspaceRef.current?.offsetWidth || 0;
-    const workspaceHeight = workspaceRef.current?.offsetHeight || 0;
-    const elementWidth = e.target.clientWidth || 0;
-    const elementHeight = e.target.clientHeight || 0;
-
-    const top = Math.max(0, Math.min(e.top, workspaceHeight - elementHeight));
-    const left = Math.max(0, Math.min(e.left, workspaceWidth - elementWidth));
-    if (selectedId !== null) {
-      updateComponentPosition(selectedId, top, left);
-    }
-  }}
-  onResize={(e) => {
-    const workspaceWidth = workspaceRef.current?.offsetWidth || 0;
-    const workspaceHeight = workspaceRef.current?.offsetHeight || 0;
-
-    const width = Math.max(0, Math.min(e.width, workspaceWidth));
-    const height = Math.max(0, Math.min(e.height, workspaceHeight));
-    e.target.style.width = `${width}px`;
-    e.target.style.height = `${height}px`;
-    if (selectedId !== null) {
-      updateComponentSize(selectedId, width, height);
-    }
-  }}
-  onScale={(e) => {
-    const workspaceWidth = workspaceRef.current?.offsetWidth || 0;
-    const workspaceHeight = workspaceRef.current?.offsetHeight || 0;
-
-    const component = components.find((c) => c.id === selectedId);
-    if (component) {
-      const newWidth = Math.max(0, Math.min(component.size.width * e.scale[0], workspaceWidth));
-      const newHeight = Math.max(0, Math.min(component.size.height * e.scale[1], workspaceHeight));
-      updateComponentSize(selectedId, newWidth, newHeight);
-    }
-  }}
-/>
+        )}
       </div>
-    </div>
+    ))}
+    <Moveable
+      ref={moveableRef}
+      target={target}
+      resizable
+      draggable
+      ables={[Editable]}
+            props={{
+                editable: true,
+            }}
+      bounds={{
+        left: 0,
+        top: 0,
+        right: workspaceRef.current?.offsetWidth || 0,
+        bottom: workspaceRef.current?.offsetHeight || 0,
+      }}
+      onDrag={(e) => {
+        const workspaceWidth = workspaceRef.current?.offsetWidth || 0;
+        const workspaceHeight = workspaceRef.current?.offsetHeight || 0;
+        const elementWidth = e.target.clientWidth || 0;
+        const elementHeight = e.target.clientHeight || 0;
+
+        const top = Math.max(0, Math.min(e.top, workspaceHeight - elementHeight));
+        const left = Math.max(0, Math.min(e.left, workspaceWidth - elementWidth));
+        if (selectedId !== null) {
+          updateComponentPosition(selectedId, top, left);
+        }
+      }}
+      onResize={(e) => {
+        const workspaceWidth = workspaceRef.current?.offsetWidth || 0;
+        const workspaceHeight = workspaceRef.current?.offsetHeight || 0;
+
+        const width = Math.max(0, Math.min(e.width, workspaceWidth));
+        const height = Math.max(0, Math.min(e.height, workspaceHeight));
+        e.target.style.width = `${width}px`;
+        e.target.style.height = `${height}px`;
+        if (selectedId !== null) {
+          updateComponentSize(selectedId, width, height);
+        }
+      }}
+      onScale={(e) => {
+        const workspaceWidth = workspaceRef.current?.offsetWidth || 0;
+        const workspaceHeight = workspaceRef.current?.offsetHeight || 0;
+
+        const component = components.find((c) => c.id === selectedId);
+        if (component) {
+          const newWidth = Math.max(0, Math.min(component.size.width * e.scale[0], workspaceWidth));
+          const newHeight = Math.max(0, Math.min(component.size.height * e.scale[1], workspaceHeight));
+          updateComponentSize(selectedId, newWidth, newHeight);
+        }
+      }}
+    />
+  </div>
+</div>
+
   );
 };
 
