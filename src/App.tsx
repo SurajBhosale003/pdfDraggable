@@ -14,7 +14,8 @@ const App: React.FC = () => {
   const [target, setTarget] = useState<HTMLElement | null>(null);
   const [textFieldValue, setTextFieldValue] = useState<string>('');
   const [userInput, setUserInput] = useState<string>('');
- 
+  const [currentPage, setCurrentPage] = useState(0);
+
   const moveableRef = useRef<Moveable | null>(null);
   const workspaceRef = useRef<HTMLDivElement | null>(null);
   const textInputRef = useRef<HTMLInputElement | null>(null);
@@ -85,6 +86,17 @@ const App: React.FC = () => {
 } as const;
 
 
+  const handleNextPage = () => {
+    if (currentPage < datapdf.length - 1) {
+      setCurrentPage(currentPage + 1); setTarget(null); setSelectedId(null);
+    }
+  };
+
+  const handlePreviousPage = () => {
+    if (currentPage > 0) {
+      setCurrentPage(currentPage - 1); setTarget(null); setSelectedId(null);
+    }
+  };
 
   const handleUserInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setUserInput(e.target.value);
@@ -125,7 +137,7 @@ const App: React.FC = () => {
     const newComponent: ComponentData = {
       id: Date.now(),
       type,
-      pageNo:1,
+      pageNo:currentPage,
       name: `${type}-${Date.now()}`,
       position: { top: 50, left: 50 },
       size: { width: 100, height: 100 },
@@ -241,79 +253,105 @@ const App: React.FC = () => {
       const selectedComponent = components.find((c) => c.id === selectedId);
       if (selectedComponent?.type === 'text') {
         setTextFieldValue(selectedComponent.content || '');
-        textInputRef.current?.focus();
+        // textInputRef.current?.focus();
       }
     }
   }, [selectedId, components]);
 
+  const base64ToUint8Array = (base64:any) => {
+    return Uint8Array.from(atob(base64), char => char.charCodeAt(0));
+  };
+
   const mergeAndPrintPDF = async () => {
-    const existingPdfBytes = Uint8Array.from(atob(datapdf[0].data), char => char.charCodeAt(0));
+    const pdfDoc = await PDFDocument.create(); // Create a new PDF document
+    
+    // Merge all PDFs
+    for (let i = 0; i < datapdf.length; i++) {
+      const pdfBytes = base64ToUint8Array(datapdf[i].data);
+      const pdfToMerge = await PDFDocument.load(pdfBytes);
   
-    const pdfDoc = await PDFDocument.load(existingPdfBytes);
-    const page = pdfDoc.getPages()[0];
-  
-    for (const component of components) {
-      const { left, top } = component.position;
-  
-      if (component.type === 'text') {
-        const fontSize = component.fontSize ?? 12;
-        const yPosition = page.getHeight() - top - fontSize - 3;
-        page.drawText(component.content || '', {
-          x: left + 3,
-          y: yPosition,
-          size: component.fontSize,
-          color: rgb(0, 0, 0),
-          lineHeight: fontSize * 1.2,
-          maxWidth: component.size.width,
-        });
-      } else if (component.type === 'image' && component.content) {
-        const imageData = component.content.split(',')[1];
-        if (!imageData) {
-          console.error('Invalid image data');
-          continue;
-        }
-  
-        const imageBytes = Uint8Array.from(atob(imageData), char => char.charCodeAt(0));
-        let embeddedImage;
-  
-        if (component.content.startsWith('data:image/png')) {
-          embeddedImage = await pdfDoc.embedPng(imageBytes);
-        } else if (component.content.startsWith('data:image/jpeg') || component.content.startsWith('data:image/jpg')) {
-          embeddedImage = await pdfDoc.embedJpg(imageBytes);
-        } else {
-          console.error('Unsupported image format');
-          continue;
-        }
-  
-        const { width: imageWidth, height: imageHeight } = embeddedImage;
-        const containerWidth = component.size.width;
-        const containerHeight = component.size.height;
-  
-        // Calculate scale ratio
-        const widthRatio = containerWidth / imageWidth;
-        const heightRatio = containerHeight / imageHeight;
-        const scaleRatio = Math.min(widthRatio, heightRatio);
-  
-        const drawWidth = imageWidth * scaleRatio;
-        const drawHeight = imageHeight * scaleRatio;
-  
-        // Ensure the image fits within the container dimensions
-        const x = left;
-        const y = page.getHeight() - top - drawHeight;
-  
-        page.drawImage(embeddedImage, {
-          x: x,
-          y: y,
-          width: drawWidth,
-          height: drawHeight,
-        });
-      }
+      // Copy pages from the source PDF to the destination PDF
+      const pages = await pdfDoc.copyPages(pdfToMerge, pdfToMerge.getPageIndices());
+      pages.forEach(page => pdfDoc.addPage(page));
     }
   
+    // Group components by page number
+    const componentsByPage = components.reduce((acc, component) => {
+      if (!acc[component.pageNo]) acc[component.pageNo] = [];
+      acc[component.pageNo].push(component);
+      return acc;
+    }, {});
+  
+    // Apply components to their respective pages
+    const pages = pdfDoc.getPages();
+    
+    for (const page of pages) {
+      const pageIndex = pages.indexOf(page); // 1-based index for page number==== here +1 or -1 if components needs adjustments on page.
+      const pageComponents = componentsByPage[pageIndex] || [];
+  
+      for (const component of pageComponents) {
+        const { left, top } = component.position;
+  
+        if (component.type === 'text') {
+          const fontSize = component.fontSize ?? 12;
+          const yPosition = page.getHeight() - top - fontSize - 3;
+          page.drawText(component.content || '', {
+            x: left + 3,
+            y: yPosition,
+            size: component.fontSize,
+            color: rgb(0, 0, 0),
+            lineHeight: fontSize * 1.2,
+            maxWidth: component.size.width,
+          });
+        } else if (component.type === 'image' && component.content) {
+          const imageData = component.content.split(',')[1];
+          if (!imageData) {
+            console.error('Invalid image data');
+            continue;
+          }
+  
+          const imageBytes = base64ToUint8Array(imageData);
+          let embeddedImage;
+  
+          if (component.content.startsWith('data:image/png')) {
+            embeddedImage = await pdfDoc.embedPng(imageBytes);
+          } else if (component.content.startsWith('data:image/jpeg') || component.content.startsWith('data:image/jpg')) {
+            embeddedImage = await pdfDoc.embedJpg(imageBytes);
+          } else {
+            console.error('Unsupported image format');
+            continue;
+          }
+  
+          const { width: imageWidth, height: imageHeight } = embeddedImage;
+          const containerWidth = component.size.width;
+          const containerHeight = component.size.height;
+  
+          // Calculate scale ratio
+          const widthRatio = containerWidth / imageWidth;
+          const heightRatio = containerHeight / imageHeight;
+          const scaleRatio = Math.min(widthRatio, heightRatio);
+  
+          const drawWidth = imageWidth * scaleRatio;
+          const drawHeight = imageHeight * scaleRatio;
+  
+          //container dimensions
+          const x = left;
+          const y = page.getHeight() - top - drawHeight;
+  
+          page.drawImage(embeddedImage, {
+            x: x,
+            y: y,
+            width: drawWidth,
+            height: drawHeight,
+          });
+        }
+      }
+    }
+    // Save and download the PDF
     const pdfBytes = await pdfDoc.save();
     const blob = new Blob([pdfBytes], { type: 'application/pdf' });
     const url = URL.createObjectURL(blob);
-    const varName = "eSign"; // Can add the name or title of the PDF while saving.
+    const varName = "eSign"; // Name or title of the PDF while saving
     const link = document.createElement('a');
     link.href = url;
     link.download = `${varName}.pdf`;
@@ -361,6 +399,18 @@ const App: React.FC = () => {
     <button onClick={loadComponents}>Load Components from JSON</button>
     <button onClick={loadDexcissComponents}>Load Dexciss Component from JSON</button>
     <button onClick={loadHelloDexcissComponents}>Load Hello Component from JSON</button>
+    <div>
+        <button onClick={handlePreviousPage} disabled={currentPage === 0}>
+          Previous
+        </button>
+        <button
+          onClick={handleNextPage}
+          disabled={currentPage === datapdf.length - 1}
+        >
+          Next
+        </button>
+      </div>
+   
     {selectedId && (
       <>
         <button onClick={() => changeTextSize(true)}>Increase Text Size</button>
@@ -402,54 +452,58 @@ const App: React.FC = () => {
   )}
   <div className="workspace" ref={workspaceRef} onClick={handleDeselect}>
 
-    <PdfRenderer pdfData={datapdf[0].data}/>
+  <PdfRenderer pdfData={datapdf[currentPage].data} />
 
-    {components.map((component) => (
-      <div
-        key={component.id}
-        data-id={component.id}
-        className={`component ${component.type} ${selectedId === component.id ? 'selected' : ''}`}
-        style={{
-          position: 'absolute',
-          top: component.position.top,
-          left: component.position.left,
-          width: component.size.width,
-          height: component.size.height,
-          border: selectedId === component.id ? '1px solid red' : 'none',
-          fontSize: `${component.fontSize}px`,
-          userSelect: 'none',
-          overflow: 'hidden',
-        }}
-        onClick={(e) => {
-          e.stopPropagation();
-          setSelectedId(component.id);
-        }}
-      >
-        {component.type === 'text' ? (
-          <div
-            style={{ width: '100%', height: '100%', overflow: 'hidden', fontSize: 'inherit', outline: 'none' }}
-          >
-            {component.content || 'Editable Text'}
-          </div>
-        ) : (
-          <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-            {!component.content && (
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => handleImageUpload(e, component.id)}
-              />
-            )}
-            {component.content && (
-              <div>
-                <img src={component.content} alt="Uploaded" style={{ width: '100%', height: '100%' }} />
-                {/* <button onClick={() => handleRemoveImage(component.id)}>Remove Image</button> */}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    ))}
+    {components
+  .filter((component) => component.pageNo === currentPage) 
+  .map((component) => (
+    <div
+      key={component.id}
+      data-id={component.id}
+      className={`component ${component.type} ${selectedId === component.id ? 'selected' : ''}`}
+      style={{
+        position: 'absolute',
+        top: component.position.top,
+        left: component.position.left,
+        width: component.size.width,
+        height: component.size.height,
+        border: selectedId === component.id ? '1px solid red' : 'none',
+        fontSize: `${component.fontSize}px`,
+        userSelect: 'none',
+        overflow: 'hidden',
+      }}
+      onClick={(e) => {
+        e.stopPropagation();
+        setSelectedId(component.id);
+      }}
+    >
+      {component.type === 'text' ? (
+        <div
+          style={{ width: '100%', height: '100%', overflow: 'hidden', fontSize: 'inherit', outline: 'none' }}
+        >
+          {component.content || 'Editable Text'}
+        </div>
+      ) : (
+        <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+          {!component.content && (
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => handleImageUpload(e, component.id)}
+              
+            />
+          )}
+          {component.content && (
+            <div>
+              <img src={component.content} alt="Uploaded" style={{ width: '100%', height: '100%' }} />
+              {/* <button onClick={() => handleRemoveImage(component.id)}>Remove Image</button> */}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  ))}
+
     <Moveable
       ref={moveableRef}
       target={target}

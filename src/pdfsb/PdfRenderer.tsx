@@ -6,7 +6,6 @@ import { PdfRendererProps } from '../helper/Interface'
   const PdfRenderer: React.FC<PdfRendererProps> = ({ pdfData }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     // const [scalvalue, setScaleValue] = useState();
-   
     useEffect(() => {
       const renderPdfPage = async () => {
         const canvas = canvasRef.current;
@@ -15,15 +14,12 @@ import { PdfRendererProps } from '../helper/Interface'
           const pdf = await pdfjsLib.getDocument({ data: atob(pdfData) }).promise;
           const page = await pdf.getPage(1);
           const viewport = page.getViewport({ scale: 1 });
-  
           const context = canvas.getContext('2d');
-  
           if (context) {
             context.clearRect(0, 0, canvas.width, canvas.height);
             // Set the canvas dimensions to match the viewport
             canvas.width = viewport.width;
             canvas.height = viewport.height;
-  
             // Render the PDF page into the canvas context
             const renderContext = {
               canvasContext: context,
